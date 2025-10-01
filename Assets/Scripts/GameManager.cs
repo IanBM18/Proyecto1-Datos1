@@ -2,225 +2,212 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 
-// Clase para guardar la información de un jugador
-// [System.Serializable] hace que esta clase se pueda ver en el Inspector de Unity
-[System.Serializable]
-public class Jugador
-{
-    public string nombre;
-    public Color color;
-}
-
-// Esta es la clase principal del GameManager
 public class GameManager : MonoBehaviour
 {
-    // Una variable estática para que otros scripts puedan acceder a este GameManager
     public static GameManager instancia;
 
-    // Listas y variables para gestionar jugadores y territorios
-    // Dentro de la clase GameManager, al inicio
     public enum FaseJuego { AsignacionInicial, Refuerzo, Ataque, Movimiento }
-
     public FaseJuego faseActual = FaseJuego.AsignacionInicial;
-    public int territoriosLibresRestantes; // Contador para saber cuándo termina la asignación
+
+    [Header("Territorios y Jugadores")]
     public List<Territorio> todosLosTerritorios;
-    public TextMeshProUGUI nombreJugador1Text;
-    public TextMeshProUGUI nombreJugador2Text;
     public List<Jugador> jugadores = new List<Jugador>();
 
-    // Esta variable guardará el territorio que el jugador ha seleccionado
-    public Territorio territorioSeleccionado = null;
+    [Header("UI de Jugadores")]
+    public TextMeshProUGUI nombreJugador1Text;
+    public TextMeshProUGUI nombreJugador2Text;
+
+    [Header("UI de Estado del Juego")]
+    public TextMeshProUGUI textoTurno;
+    public TextMeshProUGUI textoFase;
+    public TextMeshProUGUI textoRefuerzos;
+    public TextMeshProUGUI textoLog;
+
+    public int territoriosLibresRestantes;
+    public int indiceJugadorActual = 0;
 
     void Awake()
     {
-        // Se asegura de que haya solo una instancia de GameManager
-        if (instancia == null)
-        {
-            instancia = this;
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
+        if (instancia == null) instancia = this;
+        else Destroy(gameObject);
     }
 
-    // Start se llama cuando el juego empieza
     void Start()
     {
-        // --- AQUÍ SIMULAMOS QUE RECIBIMOS LOS DATOS DE LOS JUGADORES ---
-        // En tu juego real, estos datos vendrán del socket o de un input field
+        // Resetear territorios y UI
+        ResetearTerritorios();
 
-        // Creamos un jugador de prueba y le damos un nombre y un color
-        Jugador jugador1 = new Jugador();
-        jugador1.nombre = "Jugador 1";
-        jugador1.color = Color.red;
+        // Crear jugadores de prueba
+        Jugador j1 = new Jugador("Jugador 1", Color.red);
+        Jugador j2 = new Jugador("Jugador 2", Color.blue);
+        jugadores.Add(j1);
+        jugadores.Add(j2);
 
-        // Hacemos lo mismo para el segundo jugador
-        Jugador jugador2 = new Jugador();
-        jugador2.nombre = "Jugador 2";
-        jugador2.color = Color.blue;
+        // Actualizar UI de nombres de jugador
+        nombreJugador1Text.text = j1.nombre;
+        nombreJugador1Text.color = j1.color;
+        nombreJugador2Text.text = j2.nombre;
+        nombreJugador2Text.color = j2.color;
 
-        // Agregamos a los jugadores a nuestra lista
-        jugadores.Add(jugador1);
-        jugadores.Add(jugador2);
+        ActualizarUIPrincipal();
 
-        // --- AHORA ACTUALIZAMOS LA INTERFAZ CON LA INFORMACIÓN ---
-        if (jugadores.Count > 0)
+        RegistrarAccion("INICIO: Fase de Asignación Inicial.");
+    }
+
+    // ================== LOG DE ACCIONES ==================
+    public void RegistrarAccion(string mensaje)
+    {
+        if (textoLog != null)
+            textoLog.text += "\n" + mensaje;
+        Debug.Log(mensaje);
+    }
+
+    void ActualizarUIPrincipal()
+    {
+        Jugador jugador = jugadores[indiceJugadorActual];
+        if (textoTurno != null)
         {
-            nombreJugador1Text.text = jugadores[0].nombre;
-            nombreJugador1Text.color = jugadores[0].color;
+            textoTurno.text = "Turno de: " + jugador.nombre;
+            textoTurno.color = jugador.color;
+        }
+        if (textoFase != null)
+            textoFase.text = "Fase actual: " + faseActual.ToString();
+        if (textoRefuerzos != null)
+            textoRefuerzos.text = "Tropas disponibles: " + jugador.tropasDisponibles;
+    }
+
+    // ================== CLIC EN TERRITORIOS ==================
+    public void ProcesarClicDeTerritorio(Territorio t)
+    {
+        switch (faseActual)
+        {
+            case FaseJuego.AsignacionInicial:
+                if (t.propietario == null)
+                {
+                    Jugador jugadorActual = jugadores[indiceJugadorActual];
+                    t.AsignarPropietario(jugadorActual);
+                    territoriosLibresRestantes--;
+
+                    RegistrarAccion(jugadorActual.nombre + " reclama " + t.name);
+
+                    // Animación simple
+                    t.MostrarFeedback();
+
+                    // Cambiar turno
+                    indiceJugadorActual = (indiceJugadorActual + 1) % jugadores.Count;
+
+                    // Si no quedan territorios libres, cambiar a fase Refuerzo
+                    if (territoriosLibresRestantes <= 0)
+                        CambiarAFaseRefuerzos();
+                }
+                else
+                    RegistrarAccion("❌ Ese territorio ya está ocupado.");
+                break;
+
+            case FaseJuego.Refuerzo:
+                if (t.propietario == jugadores[indiceJugadorActual])
+                {
+                    ColocarTropas(t, 1);
+                }
+                else
+                {
+                    RegistrarAccion("❌ Solo puedes reforzar tus territorios.");
+                }
+                break;
+
+            case FaseJuego.Ataque:
+                RegistrarAccion("⚔️ (Fase Ataque aún no implementada).");
+                break;
+
+            case FaseJuego.Movimiento:
+                RegistrarAccion("🚛 (Fase Movimiento aún no implementada).");
+                break;
         }
 
-        if (jugadores.Count > 1)
+        ActualizarUIPrincipal();
+    }
+
+    // ================== FASES ==================
+    void CambiarAFaseRefuerzos()
+    {
+        faseActual = FaseJuego.Refuerzo;
+        indiceJugadorActual = 0;
+        Jugador jugador = jugadores[indiceJugadorActual];
+        CalcularRefuerzos(jugador);
+
+        RegistrarAccion("🔄 Empieza la fase de Refuerzos. Turno de " + jugador.nombre);
+        ActualizarUIPrincipal();
+    }
+
+    public void SiguienteTurno()
+    {
+        indiceJugadorActual = (indiceJugadorActual + 1) % jugadores.Count;
+        Jugador jugador = jugadores[indiceJugadorActual];
+        CalcularRefuerzos(jugador);
+
+        RegistrarAccion("➡️ Cambio de turno. Ahora juega " + jugador.nombre);
+        ActualizarUIPrincipal();
+    }
+
+    // ================== TERRITORIOS ==================
+    public void ResetearTerritorios()
+    {
+        foreach (Territorio t in todosLosTerritorios)
         {
-            nombreJugador2Text.text = jugadores[1].nombre;
-            nombreJugador2Text.color = jugadores[1].color;
+            t.propietario = null;
+            t.tropas = 0;
+            t.ActualizarUI();
         }
 
-
-        // ¡ATENCIÓN! Hemos quitado la llamada a AsignarTerritoriosIniciales();
-        
-        // Inicializa el contador con el total de territorios
         territoriosLibresRestantes = todosLosTerritorios.Count;
-        Debug.Log("INICIO: Fase de Asignación Inicial.");
+        RegistrarAccion("♻️ Territorios reseteados. Total libres: " + territoriosLibresRestantes);
     }
 
-    // Lógica para que los jugadores reclamen territorios
-    public void ReclamarTerritorio(Territorio territorioClicado)
+    public void CalcularRefuerzos(Jugador jugador)
     {
-        // Si el territorio no tiene dueño, el jugador actual lo reclama.
-        // Esto se ejecutará en la fase de 'asignación inicial'.
-        if (territorioClicado.propietario == null)
+        int refuerzosBase = Mathf.Max(3, TerritoriosControlados(jugador).Count / 3);
+        jugador.tropasDisponibles = refuerzosBase;
+
+        RegistrarAccion("➕ " + jugador.nombre + " recibe " + jugador.tropasDisponibles + " tropas de refuerzo.");
+    }
+
+    public List<Territorio> TerritoriosControlados(Jugador jugador)
+    {
+        List<Territorio> controlados = new List<Territorio>();
+        foreach (Territorio t in todosLosTerritorios)
         {
-            // Asigna el territorio al Jugador 1 por ahora.
-            // Más adelante, aquí irá la lógica del turno.
-            territorioClicado.AsignarPropietario(jugadores[0]);
+            if (t.propietario == jugador)
+                controlados.Add(t);
         }
+        return controlados;
     }
 
-    // Lógica para que los jugadores muevan ejércitos entre territorios
-    public void MoverEjercitos(Territorio territorioOrigen, Territorio territorioDestino)
+    // ================== REFUERZOS ==================
+    public void ColocarTropas(Territorio territorio, int cantidad)
     {
-        // Verifica que el origen y destino pertenezcan al mismo jugador
-        if (territorioOrigen.propietario == territorioDestino.propietario)
+        Jugador jugadorActual = jugadores[indiceJugadorActual];
+
+        if (territorio.propietario != jugadorActual)
         {
-            // Verifica que el destino sea vecino del origen
-            if (territorioOrigen.vecinos.Contains(territorioDestino))
-            {
-                // Lógica para mover los ejércitos
-                Debug.Log("Movimiento de ejércitos válido.");
-            }
-            else
-            {
-                Debug.Log("El territorio de destino no es vecino.");
-            }
+            RegistrarAccion("❌ No puedes colocar tropas en territorios ajenos.");
+            return;
         }
-        else
+
+        if (cantidad > jugadorActual.tropasDisponibles)
         {
-            Debug.Log("Los territorios no pertenecen al mismo jugador.");
+            RegistrarAccion("❌ Tropas insuficientes.");
+            return;
         }
+
+        territorio.tropas += cantidad;
+        jugadorActual.tropasDisponibles -= cantidad;
+
+        territorio.ActualizarUI();
+        territorio.MostrarFeedback();
+
+        RegistrarAccion(jugadorActual.nombre + " coloca " + cantidad + " tropas en " + territorio.name + 
+                        " (restan " + jugadorActual.tropasDisponibles + ").");
+
+        ActualizarUIPrincipal();
     }
-
-    public void ProcesarClicDeTerritorio(Territorio territorioClicado)
-    {
-    // Lógica para que el territorio se ilumine al hacer clic (selección visual)
-    if (territorioSeleccionado != null)
-    {
-        // Desactiva la selección visual del anterior (si ya tenías la lógica visual)
-        // territorioSeleccionado.bordeSeleccionado.SetActive(false);
-    }
-    
-    // Si el territorio clicado ya está seleccionado (para deseleccionar)
-    if (territorioClicado == territorioSeleccionado)
-    {
-        territorioSeleccionado = null;
-        // territorioClicado.bordeSeleccionado.SetActive(false);
-        Debug.Log("Territorio deseleccionado.");
-        return;
-    }
-
-    switch (faseActual)
-    {
-        case FaseJuego.AsignacionInicial:
-            // --------------------------------------------------------
-            // LÓGICA DE ASIGNACIÓN INICIAL (SOLO LIBRES)
-            // --------------------------------------------------------
-            
-            // Si el territorio NO tiene dueño (está libre)
-            if (territorioClicado.propietario == null)
-            {
-                // **FALTA IMPLEMENTAR:** Lógica del turno para saber quién reclama
-                Jugador jugadorActual = jugadores[0]; // Por ahora, asignamos al Jugador 1
-
-                territorioClicado.AsignarPropietario(jugadorActual);
-                territoriosLibresRestantes--;
-
-                Debug.Log(territorioClicado.propietario.nombre + " ha reclamado un territorio. Libres restantes: " + territoriosLibresRestantes);
-
-                // Comprobar si termina la fase de asignación
-                if (territoriosLibresRestantes <= 0)
-                {
-                    faseActual = FaseJuego.Refuerzo; // Pasa a la siguiente fase
-                    Debug.Log("FIN DE ASIGNACIÓN INICIAL. COMIENZA FASE DE REFUERZO.");
-                }
-            }
-            else
-            {
-                Debug.Log("ERROR: Solo puedes reclamar territorios LIBRES en esta fase.");
-            }
-            break;
-
-        case FaseJuego.Refuerzo:
-            // --------------------------------------------------------
-            // LÓGICA DE MOVIMIENTO/ATAQUE (Necesita lógica de selección)
-            // --------------------------------------------------------
-            
-            // Lógica de Selección de Origen
-            if (territorioSeleccionado == null)
-            {
-                if (territorioClicado.propietario == jugadores[0]) // Si es del jugador actual
-                {
-                    territorioSeleccionado = territorioClicado;
-                    // territorioClicado.bordeSeleccionado.SetActive(true);
-                    Debug.Log("Origen seleccionado para refuerzo: " + territorioClicado.propietario.nombre);
-                }
-                else
-                {
-                    Debug.Log("ERROR: Debes seleccionar uno de tus territorios.");
-                }
-            }
-            // Lógica de Selección de Destino (Solo vecinos)
-            else
-            {
-                if (territorioSeleccionado.vecinos.Contains(territorioClicado))
-                {
-                    // Lógica para refuerzo o ataque
-                    if (territorioSeleccionado.propietario == territorioClicado.propietario)
-                    {
-                        Debug.Log("Refuerzo válido. Moviendo tropas.");
-                        // ... Implementar lógica de mover N tropas ...
-                    }
-                    else
-                    {
-                        Debug.Log("¡Ataque! Lógica de batalla pendiente.");
-                        // ... Implementar lógica de ataque ...
-                    }
-                }
-                else
-                {
-                    Debug.Log("ERROR: El destino debe ser un territorio vecino.");
-                }
-                
-                // Limpiar selección después de la acción
-                territorioSeleccionado = null;
-            }
-            break;
-            
-        // Puedes añadir más fases aquí (Ataque, Movimiento)
-        default:
-            Debug.Log("Fase de juego no implementada: " + faseActual.ToString());
-            break;
-    }
-    }
-
 }

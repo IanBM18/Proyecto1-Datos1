@@ -1,33 +1,63 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using System.Collections.Generic; // You'll need this for the List of neighbors
+using System.Collections.Generic;
 
 public class Territorio : MonoBehaviour
 {
-    // Connect these variables to your button in the Unity Inspector
+    [Header("Referencias UI")]
     public TextMeshProUGUI textoNombreJugador;
+    public TextMeshProUGUI textoTropas;
     public Image fondoBoton;
-    
-    // This is where we'll store the owner's Jugador object
-    public Jugador propietario;
+    public GameObject bordeSeleccionado;
 
-    // This list will hold all the neighboring territories
+    [Header("Datos")]
+    public Jugador propietario;
+    public int tropas = 0;
+
+    [Header("Vecinos")]
     public List<Territorio> vecinos;
-    
-    // This method will be called from the GameManager to assign an owner
+
+    // ================== LÓGICA ==================
     public void AsignarPropietario(Jugador nuevoPropietario)
     {
-        // Now you can assign the whole Jugador object at once
         propietario = nuevoPropietario;
-        textoNombreJugador.text = nuevoPropietario.nombre;
-        fondoBoton.color = nuevoPropietario.color;
+        tropas = 1; // Al reclamar
+        ActualizarUI();
+        MostrarFeedback();
     }
 
-    // This function is activated when the button is clicked
+    public void ActualizarUI()
+    {
+        // Evitar errores si los elementos no están asignados
+        if (textoNombreJugador != null)
+        {
+            textoNombreJugador.text = propietario != null ? propietario.nombre : "Libre";
+            textoNombreJugador.color = propietario != null ? propietario.color : Color.black;
+        }
+
+        if (fondoBoton != null)
+            fondoBoton.color = propietario != null ? propietario.color : Color.white;
+
+        if (textoTropas != null)
+            textoTropas.text = tropas.ToString();
+    }
+
+    public void Seleccionar(bool activo)
+    {
+        if (bordeSeleccionado != null)
+            bordeSeleccionado.SetActive(activo);
+    }
+
     public void OnClickTerritorio()
     {
-        // Llama al GameManager para procesar la lógica de clic para este territorio
-        GameManager.instancia.ProcesarClicDeTerritorio(this);
+        Debug.Log("Clic detectado en territorio: " + gameObject.name);
+        if (GameManager.instancia != null)
+            GameManager.instancia.ProcesarClicDeTerritorio(this);
+    }
+
+    public void MostrarFeedback()
+    {
+        LeanTween.scale(gameObject, Vector3.one * 1.1f, 0.2f).setEasePunch();
     }
 }
