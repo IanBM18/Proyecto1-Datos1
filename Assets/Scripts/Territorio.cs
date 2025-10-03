@@ -12,30 +12,22 @@ public class Territorio : MonoBehaviour
     public GameObject bordeSeleccionado;
 
     [Header("Datos")]
-    // 👇 Asigna estos en el Inspector de Unity
-    public TextMeshProUGUI textoNombreJugador;  // para mostrar el dueño
-    public TextMeshProUGUI textoTropas;         // para mostrar tropas (opcional)
-    public Image fondoBoton;                    // color del botón según jugador
-
-    // Propiedades del territorio
     public Jugador propietario;
-    public int tropas = 0;
+    public int tropas = 1;
 
     [Header("Vecinos")]
-    public List<Territorio> vecinos;
+    public List<Territorio> vecinos = new List<Territorio>();
 
-    // ================== LÓGICA ==================
-    public void AsignarPropietario(Jugador nuevoPropietario)
+    public void AsignarPropietario(Jugador jugador)
     {
-        propietario = nuevoPropietario;
-        tropas = 1; // Al reclamar
+        propietario = jugador;
+        tropas = Mathf.Max(1, tropas); // al asignar asegurar al menos 1
         ActualizarUI();
         MostrarFeedback();
     }
 
     public void ActualizarUI()
     {
-        // Evitar errores si los elementos no están asignados
         if (textoNombreJugador != null)
         {
             textoNombreJugador.text = propietario != null ? propietario.nombre : "Libre";
@@ -51,52 +43,20 @@ public class Territorio : MonoBehaviour
 
     public void Seleccionar(bool activo)
     {
-        if (bordeSeleccionado != null)
-            bordeSeleccionado.SetActive(activo);
+        if (bordeSeleccionado != null) bordeSeleccionado.SetActive(activo);
     }
 
-    public int tropas = 1; // cada territorio empieza con 1 tropa por defecto
-
-    // Vecinos (se asignan en el Inspector)
-    public Territorio[] vecinos;
-
-    // =====================================================
-    // Asigna un jugador como dueño del territorio
-    // =====================================================
-    public void AsignarPropietario(Jugador jugador)
-    {
-        propietario = jugador;
-        ActualizarUI();
-    }
-
-    // =====================================================
-    // Actualiza UI (nombre, color y tropas)
-    // =====================================================
-    public void ActualizarUI()
-    {
-        if (textoNombreJugador != null) 
-            textoNombreJugador.text = propietario != null ? propietario.nombre : "Neutral";
-
-        if (fondoBoton != null) 
-            fondoBoton.color = propietario != null ? propietario.color : Color.gray;
-
-        if (textoTropas != null) 
-            textoTropas.text = tropas.ToString();
-    }
-
-    // =====================================================
-    // Cuando el jugador hace clic en el territorio
-    // =====================================================
     public void OnClickTerritorio()
     {
-        Debug.Log("Clic detectado en territorio: " + gameObject.name);
-        if (GameManager.instancia != null)
-            GameManager.instancia.ProcesarClicDeTerritorio(this);
-        GameManager.instancia.ProcesarClicDeTerritorio(this);
+        Debug.Log("Clic en territorio: " + name);
+        if (GameManager.instancia != null) GameManager.instancia.ProcesarClicDeTerritorio(this);
     }
 
     public void MostrarFeedback()
     {
-        LeanTween.scale(gameObject, Vector3.one * 1.1f, 0.2f).setEasePunch();
+        // Si no tienes LeanTween, comenta la línea o implementa otra animación.
+        #if LEANTWEEN_PRESENT
+        LeanTween.scale(gameObject, Vector3.one * 1.08f, 0.18f).setEasePunch();
+        #endif
     }
 }

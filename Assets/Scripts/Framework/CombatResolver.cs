@@ -1,12 +1,16 @@
 using System;
+using UnityEngine;
 
 public static class CombatResolver
 {
-    private static Random rng = new Random();
+    private static System.Random rng = new System.Random();
 
-    // Devuelve (perdidasAtacante, perdidasDefensor)
     public static (int atkLoss, int defLoss) Resolve(int atkDice, int defDice)
     {
+        // Asegurar rangos válidos
+        atkDice = Mathf.Clamp(atkDice, 1, 3);
+        defDice = Mathf.Clamp(defDice, 1, 2);
+
         int[] a = new int[atkDice];
         int[] d = new int[defDice];
 
@@ -18,11 +22,14 @@ public static class CombatResolver
 
         int comps = Math.Min(atkDice, defDice);
         int atkLoss = 0, defLoss = 0;
+
         for (int i = 0; i < comps; i++)
         {
             if (a[i] > d[i]) defLoss++;
             else atkLoss++;
         }
+
+        Debug.Log($"🎲 Ataque [{string.Join(",", a)}] vs Defensa [{string.Join(",", d)}] -> Atk -{atkLoss}, Def -{defLoss}");
         return (atkLoss, defLoss);
     }
 }
