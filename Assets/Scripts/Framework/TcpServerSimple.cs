@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.IO;
 using System.Threading;
+using UnityEngine;
 
 public class TcpServerSimple
 {
@@ -12,13 +13,16 @@ public class TcpServerSimple
     private object incomingLock = new object();
     private MyLinkedList<string> incoming = new MyLinkedList<string>();
 
-    public void Start(int port)
+    public event Action<string> OnMessageReceived;
+
+    public void Start(int port = 5000)
     {
         listener = new TcpListener(IPAddress.Any, port);
         listener.Start();
         running = true;
         listenerThread = new Thread(ListenLoop) { IsBackground = true };
         listenerThread.Start();
+        Debug.Log($"📡 Servidor escuchando en puerto {port}");
     }
 
     private void ListenLoop()
@@ -37,23 +41,42 @@ public class TcpServerSimple
     private void HandleClient(object state)
     {
         var client = (TcpClient)state;
-        using (var stream = client.GetStream())
-        using (var reader = new StreamReader(stream))
+        try
         {
-            string line;
-            while ((line = reader.ReadLine()) != null)
+            using (var stream = client.GetStream())
+            using (var reader = new StreamReader(stream))
             {
-                lock (incomingLock) incoming.AddLast(line);
+                string line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    lock (incomingLock)
+                    {
+                        incoming.AddLast(line);
+                        OnMessageReceived?.Invoke(line);
+                        Debug.Log("📩 Servidor recibió: " + line);
+                    }
+                }
             }
         }
-        client.Close();
+        catch (Exception e)
+        {
+            Debug.LogError("❌ Error HandleClient: " + e.Message);
+        }
+        finally
+        {
+            client.Close();
+        }
     }
 
     public bool TryGetMessage(out string json)
     {
         lock (incomingLock)
         {
-            if (incoming.Count > 0) { json = incoming.PopFirst(); return true; }
+            if (incoming.Count > 0)
+            {
+                json = incoming.PopFirst();
+                return true;
+            }
         }
         json = null;
         return false;
@@ -63,5 +86,6 @@ public class TcpServerSimple
     {
         running = false;
         listener.Stop();
+        Debug.Log("❌ Servidor detenido");
     }
 }
