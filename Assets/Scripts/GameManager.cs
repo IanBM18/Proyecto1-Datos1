@@ -67,11 +67,26 @@ public class GameManager : MonoBehaviour
         RegistrarAccion("INICIO: Fase de Asignación Inicial.");
         ActualizarUIPrincipal();
 
-        // Conectar cliente TCP
-        cliente = new TcpClientSimple();
-        cliente.Connect("127.0.0.1", 7777);
-        RegistrarAccion("📡 Cliente TCP conectado al servidor.");
+        // 🔹 Nueva lógica de conexión (Cliente o Servidor)
+        string rol = PlayerPrefs.GetString("Role", "Client");
+        string alias = PlayerPrefs.GetString("Alias", "Jugador");
+        if (rol == "Server")
+        {
+            TcpServerSimple server = new TcpServerSimple();
+            server.Start(7777);
+            server.OnMessageReceived += (msg) => RegistrarAccion("📩 " + msg);
+            RegistrarAccion($"🖥️ Servidor iniciado por {alias}");
+        }
+        else
+        {
+            cliente = new TcpClientSimple();
+            string ip = PlayerPrefs.GetString("ServerIP", "127.0.0.1");
+            cliente.Connect(ip, 7777);
+            cliente.OnMessageReceived += (msg) => RegistrarAccion("📩 " + msg);
+            RegistrarAccion($"📡 Cliente {alias} conectado al servidor en {ip}");
+        }
     }
+
 
     // ---------- Logging ----------
     public void RegistrarAccion(string mensaje)
