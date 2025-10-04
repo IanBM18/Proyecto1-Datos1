@@ -32,12 +32,12 @@ public class Territorio : MonoBehaviour
     {
         if (textoNombreJugador != null)
         {
-            textoNombreJugador.text = propietario != null ? propietario.nombre : "Libre";
-            textoNombreJugador.color = propietario != null ? propietario.color : Color.black;
+            textoNombreJugador.text = propietario != null ? propietario.Nombre : "Libre";
+            textoNombreJugador.color = propietario != null ? propietario.Color : Color.black;
         }
 
         if (fondoBoton != null)
-            fondoBoton.color = propietario != null ? propietario.color : Color.white;
+            fondoBoton.color = propietario != null ? propietario.Color : Color.white;
 
         if (textoTropas != null)
             textoTropas.text = tropas.ToString();

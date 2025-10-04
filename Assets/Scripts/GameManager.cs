@@ -2,34 +2,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 
-[System.Serializable]
-public class Jugador
-{
-    public string nombre;
-    public Color color;
-    public int tropasDisponibles = 0;
-
-    public List<Tarjeta> tarjetas = new List<Tarjeta>();
-
-    public Jugador() { }
-
-    public Jugador(string nombre, Color color)
-    {
-        this.nombre = nombre;
-        this.color = color;
-        this.tropasDisponibles = 0;
-    }
-
-    public bool TieneTrioDeTarjetas() => tarjetas.Count >= 3;
-
-    public List<Tarjeta> UsarTrio()
-    {
-        List<Tarjeta> usadas = tarjetas.GetRange(0, 3);
-        tarjetas.RemoveRange(0, 3);
-        return usadas;
-    }
-}
-
 public class GameManager : MonoBehaviour
 {
     public static GameManager instancia;
@@ -80,13 +52,13 @@ public class GameManager : MonoBehaviour
         // Mostrar nombres y colores en UI
         if (nombreJugador1Text != null && jugadores.Count > 0)
         {
-            nombreJugador1Text.text = jugadores[0].nombre;
-            nombreJugador1Text.color = jugadores[0].color;
+            nombreJugador1Text.text = jugadores[0].Nombre;
+            nombreJugador1Text.color = jugadores[0].Color;
         }
         if (nombreJugador2Text != null && jugadores.Count > 1)
         {
-            nombreJugador2Text.text = jugadores[1].nombre;
-            nombreJugador2Text.color = jugadores[1].color;
+            nombreJugador2Text.text = jugadores[1].Nombre;
+            nombreJugador2Text.color = jugadores[1].Color;
         }
 
         ResetearTerritorios();
@@ -110,7 +82,7 @@ public class GameManager : MonoBehaviour
 
     public void EnviarAccion(string accion)
     {
-        string json = $"{{\"jugador\":\"{jugadores[indiceJugadorActual].nombre}\", \"accion\":\"{accion}\"}}";
+        string json = $"{{\"jugador\":\"{jugadores[indiceJugadorActual].Nombre}\", \"accion\":\"{accion}\"}}";
         cliente.Send(json);
         Debug.Log("📤 Mensaje enviado: " + json);
     }
@@ -122,11 +94,11 @@ public class GameManager : MonoBehaviour
 
         if (textoTurno != null)
         {
-            textoTurno.text = "Turno: " + jugador.nombre;
-            textoTurno.color = jugador.color;
+            textoTurno.text = "Turno: " + jugador.Nombre;
+            textoTurno.color = jugador.Color;
         }
         if (textoFase != null) textoFase.text = "Fase: " + faseActual.ToString();
-        if (textoRefuerzos != null) textoRefuerzos.text = "Tropas disponibles: " + jugador.tropasDisponibles;
+        if (textoRefuerzos != null) textoRefuerzos.text = "Tropas disponibles: " + jugador.TropasDisponibles;
     }
 
     // ---------- Turnos ----------
@@ -134,8 +106,8 @@ public class GameManager : MonoBehaviour
     {
         if (VerificarVictoria(jugadores[indiceJugadorActual]))
         {
-            RegistrarAccion("🎉 ¡" + jugadores[indiceJugadorActual].nombre + " ha ganado!");
-            EnviarAccion("¡" + jugadores[indiceJugadorActual].nombre + " ha ganado!");
+            RegistrarAccion("🎉 ¡" + jugadores[indiceJugadorActual].Nombre + " ha ganado!");
+            EnviarAccion("¡" + jugadores[indiceJugadorActual].Nombre + " ha ganado!");
             return;
         }
 
@@ -143,8 +115,8 @@ public class GameManager : MonoBehaviour
         Jugador jugador = jugadores[indiceJugadorActual];
         CalcularRefuerzos(jugador);
 
-        RegistrarAccion("➡️ Cambio de turno. Ahora juega " + jugador.nombre);
-        EnviarAccion("Turno de " + jugador.nombre);
+        RegistrarAccion("➡️ Cambio de turno. Ahora juega " + jugador.Nombre);
+        EnviarAccion("Turno de " + jugador.Nombre);
         ActualizarUIPrincipal();
     }
 
@@ -153,11 +125,11 @@ public class GameManager : MonoBehaviour
     {
         int territorios = TerritoriosControlados(jugador).Count;
         int refuerzosBase = Mathf.Max(3, territorios / 3);
-        jugador.tropasDisponibles = refuerzosBase;
+        jugador.TropasDisponibles = refuerzosBase;
         tropasPendientesRefuerzo = refuerzosBase;
 
-        RegistrarAccion("➕ " + jugador.nombre + " recibe " + jugador.tropasDisponibles + " tropas de refuerzo.");
-        EnviarAccion(jugador.nombre + " recibe " + jugador.tropasDisponibles + " tropas de refuerzo.");
+        RegistrarAccion("➕ " + jugador.Nombre + " recibe " + jugador.TropasDisponibles + " tropas de refuerzo.");
+        EnviarAccion(jugador.Nombre + " recibe " + jugador.TropasDisponibles + " tropas de refuerzo.");
     }
 
     public List<Territorio> TerritoriosControlados(Jugador jugador)
@@ -175,19 +147,19 @@ public class GameManager : MonoBehaviour
             RegistrarAccion("❌ No puedes colocar en ajeno.");
             return;
         }
-        if (cantidad > jugadorActual.tropasDisponibles)
+        if (cantidad > jugadorActual.TropasDisponibles)
         {
             RegistrarAccion("❌ Tropas insuficientes.");
             return;
         }
 
         territorio.tropas += cantidad;
-        jugadorActual.tropasDisponibles -= cantidad;
+        jugadorActual.TropasDisponibles -= cantidad;
         territorio.ActualizarUI();
         territorio.MostrarFeedback();
 
-        RegistrarAccion($"{jugadorActual.nombre} coloca {cantidad} tropas en {territorio.name} (restan {jugadorActual.tropasDisponibles}).");
-        EnviarAccion($"{jugadorActual.nombre} coloca {cantidad} tropas en {territorio.name} (restan {jugadorActual.tropasDisponibles}).");
+        RegistrarAccion($"{jugadorActual.Nombre} coloca {cantidad} tropas en {territorio.name} (restan {jugadorActual.TropasDisponibles}).");
+        EnviarAccion($"{jugadorActual.Nombre} coloca {cantidad} tropas en {territorio.name} (restan {jugadorActual.TropasDisponibles}).");
 
         ActualizarUIPrincipal();
     }
@@ -245,8 +217,8 @@ public class GameManager : MonoBehaviour
             territorio.tropas = 1;
             territoriosLibresRestantes--;
 
-            RegistrarAccion($"{jugadorActual.nombre} reclama {territorio.name}. Libres: {territoriosLibresRestantes}");
-            EnviarAccion($"{jugadorActual.nombre} reclama {territorio.name}");
+            RegistrarAccion($"{jugadorActual.Nombre} reclama {territorio.name}. Libres: {territoriosLibresRestantes}");
+            EnviarAccion($"{jugadorActual.Nombre} reclama {territorio.name}");
 
             indiceJugadorActual = (indiceJugadorActual + 1) % jugadores.Count;
             if (territoriosLibresRestantes <= 0) CambiarAFaseRefuerzos();
@@ -259,15 +231,15 @@ public class GameManager : MonoBehaviour
         Jugador jugadorRefuerzo = jugadores[indiceJugadorActual];
         if (territorio.propietario == jugadorRefuerzo)
         {
-            if (jugadorRefuerzo.tropasDisponibles > 0)
+            if (jugadorRefuerzo.TropasDisponibles > 0)
             {
                 territorio.tropas++;
-                jugadorRefuerzo.tropasDisponibles--;
+                jugadorRefuerzo.TropasDisponibles--;
                 territorio.ActualizarUI();
-                RegistrarAccion($"{jugadorRefuerzo.nombre} coloca 1 tropa en {territorio.name}. Restan {jugadorRefuerzo.tropasDisponibles}");
-                EnviarAccion($"{jugadorRefuerzo.nombre} coloca 1 tropa en {territorio.name}. Restan {jugadorRefuerzo.tropasDisponibles}");
+                RegistrarAccion($"{jugadorRefuerzo.Nombre} coloca 1 tropa en {territorio.name}. Restan {jugadorRefuerzo.TropasDisponibles}");
+                EnviarAccion($"{jugadorRefuerzo.Nombre} coloca 1 tropa en {territorio.name}. Restan {jugadorRefuerzo.TropasDisponibles}");
 
-                if (jugadorRefuerzo.tropasDisponibles <= 0)
+                if (jugadorRefuerzo.TropasDisponibles <= 0)
                 {
                     faseActual = FaseJuego.Ataque;
                     RegistrarAccion("⚔️ Fase Ataque comienza.");
@@ -311,7 +283,7 @@ public class GameManager : MonoBehaviour
                 if (destino.propietario != atacante)
                 {
                     RegistrarAccion($"⚔️ Ataque {origen.name} -> {destino.name}");
-                    EnviarAccion($"{atacante.nombre} atacó {destino.name} desde {origen.name}");
+                    EnviarAccion($"{atacante.Nombre} atacó {destino.name} desde {origen.name}");
 
                     int atkDice = Mathf.Min(3, origen.tropas - 1);
                     int defDice = Mathf.Min(2, destino.tropas);
@@ -341,8 +313,8 @@ public class GameManager : MonoBehaviour
                         origen.ActualizarUI();
                         destino.ActualizarUI();
 
-                        RegistrarAccion($"🎉 {atacante.nombre} conquistó {destino.name} y movió {mover} tropas.");
-                        EnviarAccion($"{atacante.nombre} conquistó {destino.name} y movió {mover} tropas.");
+                        RegistrarAccion($"🎉 {atacante.Nombre} conquistó {destino.name} y movió {mover} tropas.");
+                        EnviarAccion($"{atacante.Nombre} conquistó {destino.name} y movió {mover} tropas.");
                     }
                 }
                 else RegistrarAccion("❌ No puedes atacar tus propios territorios.");
@@ -401,8 +373,8 @@ public class GameManager : MonoBehaviour
         indiceJugadorActual = 0;
         Jugador jugador = jugadores[indiceJugadorActual];
         CalcularRefuerzos(jugador);
-        RegistrarAccion("🔄 Fase Refuerzos. Turno: " + jugador.nombre);
-        EnviarAccion("Fase Refuerzos. Turno: " + jugador.nombre);
+        RegistrarAccion("🔄 Fase Refuerzos. Turno: " + jugador.Nombre);
+        EnviarAccion("Fase Refuerzos. Turno: " + jugador.Nombre);
         ActualizarUIPrincipal();
     }
 
@@ -416,8 +388,8 @@ public class GameManager : MonoBehaviour
 
     public void FinalizarMovimiento()
     {
-        RegistrarAccion("✅ " + jugadores[indiceJugadorActual].nombre + " finalizó movimiento.");
-        EnviarAccion(jugadores[indiceJugadorActual].nombre + " finalizó movimiento");
+        RegistrarAccion("✅ " + jugadores[indiceJugadorActual].Nombre + " finalizó movimiento.");
+        EnviarAccion(jugadores[indiceJugadorActual].Nombre + " finalizó movimiento");
         SiguienteTurno();
     }
 
